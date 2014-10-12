@@ -1,6 +1,6 @@
 <html>
 <head>
-<title>Joe's Hiking Page</title>
+<title>Hiking in Colorado</title>
 </head>
 
 <body>
