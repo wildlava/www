@@ -182,10 +182,6 @@ function login_form($error = FALSE)
 
 <p>
 
-<h3>Please visit our <a href="/forum/">forum</a>!  Note: you need to register separately for an account on the forum page (account is not shared with the reservation site) - just pick a any username you like (not your email address).</h3>
-
-<p>
-
 <i>
 Thanks to all who have registered as a Burke Beach House user.  The
 users permitted to make reservations extend to the direct children and
