@@ -26,7 +26,7 @@ while ($data = mysql_fetch_array($result, MYSQL_ASSOC))
     {
         break;
     }
-    
+
     $user_names[$data["userid"]] = $data["name"];
     $user_colors[$data["userid"]] = $data["color"];
 }
@@ -51,7 +51,7 @@ while ($data = mysql_fetch_array($result, MYSQL_ASSOC))
     {
         break;
     }
-    
+
     $res_numbers[] = $data["number"];
     $res_userid = $data["userid"];
     $res_userids[] = $res_userid;
@@ -73,7 +73,7 @@ while ($data = mysql_fetch_array($result, MYSQL_ASSOC))
         {
             break;
         }
-        
+
         $res_emails[] = $user_data["email"];
     }
 }
@@ -110,7 +110,7 @@ for ($j=0; $j<3; ++$j)
         {
             $num_days += 1;
         }
-        
+
         print "<td>";
         print "<center>" . $month_names[$month - 1] . "</center>";
         print "<table cellpadding=4>\n";
@@ -135,7 +135,7 @@ for ($j=0; $j<3; ++$j)
                             break;
                         }
                     }
-                    
+
                     if (!$date_reserved)
                     {
                         print "<td align=right>";
@@ -153,7 +153,7 @@ for ($j=0; $j<3; ++$j)
 
             print "</tr>\n";
         }
-        
+
         print "</table></td>\n";
     }
 
@@ -165,10 +165,10 @@ print "</table></center>\n";
 if (count($res_numbers) > 0)
 {
     print "<hr><h3>Current reservations</h3><p>\n";
-    
+
     print "<table border bordercolor=\"#dddddd\" bgcolor=\"#dddddd\" cellpadding=2 cellspacing=1>\n";
     print "<tr><th></th><th>Name</th><th>Start Date</th><th>End Date</th><th>Comments</th></tr>\n";
-    
+
     for ($i=0; $i<count($res_numbers); ++$i)
     {
         print "<tr>";
@@ -180,7 +180,7 @@ if (count($res_numbers) > 0)
         {
             print "<td></td>\n";
         }
-        
+
         print "<td bgcolor=#" . sprintf("%06x", $res_colors[$i]) . " nowrap>" . $res_names[$i] . "</td><td nowrap><pre>" . sqldate2friendly($res_starts[$i]) . "</pre></td><td nowrap><pre>" . sqldate2friendly($res_ends[$i]) . "</pre></td><td>" . $res_comments[$i] . "</td></tr>\n";
     }
 
