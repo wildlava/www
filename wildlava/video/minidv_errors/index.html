@@ -1,0 +1,301 @@
+<html>
+<head><title>MiniDV Errors</title></head>
+
+<body bgcolor="#90b590">
+
+<h1>MiniDV Errors</h1>
+<h2>
+An investigation into bit differences between two captures
+<br><i>(or: "Are MiniDV captures bit-perfect?")</i>
+</h2>
+
+After doing two consecutive captures of the same MiniDV tape over
+FireWire from a camcorder to a PC, I wanted to see if the captures
+produced exact bit-perfect copies, as is often claimed for MiniDV.
+There seems to exist much mythology (as evidenced by Internet postings)
+about whether MiniDV, when captured over FireWire, yields <i>any</i>
+generational loss at all.
+<p>
+So I embarked onto an exhaustive investigation of the data, and
+I hope my info contributes at least
+one data point about DV reliability (i.e. "losslessness").
+The results are quite surprizing!
+<p>
+As I understand, MiniDV uses ECC to try to correct some errors completely
+and that it also uses "error concealment" to "fix" errors that the ECC
+cannot correct.  What has not been clear, even from Internet searches,
+is how often these errors, especially the uncorrectable ones, occur.
+By "uncorrectable", I mean errors that will be seen as differences in
+the bits captured, even if the camera tried to conceal them.
+<p>
+It started when my wife had to get a new inexpensive camera.  Our old TRV900
+was starting to show audio (and some video) dropouts consistently (i.e.
+every few seconds).  Cleaning didn't help, and I didn't want to spend
+more money and time getting that camera looked at, etc.  We needed a
+camera <i>now</i> to be able to produce videos reliably (and also capture our
+old tapes).  We have about 20 old MiniDV tapes, and I figured I'd
+capture these digitally to hard disk for archival purposes (not trusting
+tapes much at this point).
+<p>
+Anyway, I knew that many of the dropouts on recently recorded tapes were
+there from the recording phase using that bad camera (but it was hard to
+tell if it was recording or playback that was the problem), so I
+expected them on capture with the new camera, but one particular tape
+had new recordings made on this brand-new camcorder as well.  I did a
+couple of captures over FireWire of this tape, and for kicks, I decided
+to do a bit-for-bit compare of the two captures.  Mind you, this is a
+brand new camcorder (although inexpensive: Sony DCR-HC26) with a very
+new tape.  In the image section below, you'll see that there may be
+evidence that the tape was recorded over once or maybe twice at most
+during the recording session.  I was not there, so I do not know exactly.
+<p>
+I started by comparing the AVI files using "cmp" in Linux (the AVIs are
+"Type 1" captured using WinDV).  Noting that the sizes of the AVIs were
+exactly the same (number of bytes), I figured I had a shot at exact data
+without frames dropped (WinDV always seems to report exactly 1 dropped
+frame).  But I also knew that the AVI format might have slight
+differences in header data or whatever, making comparing AVIs an invalid
+process.  As expected, the files had some byte differences.
+<p>
+So I went further.  I used a free Ulead tool to convert both captures to
+Type 2, and I used "mplayer" (Linux) to convert videos into individual
+frame images and audio wav files.  I then logged all differences.  There
+were some clips made with the old camera and 9 clips made with the new
+camera.  One new clip had audio differences, but the other 8 did not.
+<p>
+As expected, the old recordings had bit differences in audio and frames.
+ More unexpectedly, the new clips also had differences, but fewer.  The
+new recordings matched better, with only 4 out of the 9 clips showing
+any bit differences.  One new clip had audio differences, but the other
+8 did not.  We are talking only a few frames out of thousands, of course.
+<p>
+So I delved into the differences between the frames, and many were
+completely invisible to the eye without <i>really</i> looking.  I used a
+Linux/ImageMagick tool called "compare" to create difference images to point out the
+areas in the image where there were numeric pixel mismatches.
+One case showed differences in horizontal bands as well.
+But quite often there was <i>no</i> obvious glitch to the naked eye.  I had
+to stare at the right place in the two images to see the difference,
+looking back and forth between them.  In some image areas, I could detect no
+difference at all, and I gave up looking.
+I think this is a case of the camera concealing
+errors rather than correcting them and doing a pretty good job in many
+cases.  Of course, some images had visible differences (like shifted
+sections), sometimes happening at the start of the clip.
+<p>
+
+<h3>Bottom line:</h3>
+
+1) Uncorrectable errors were frequent, even within the same tape with
+new equipment.  I know there are uncorrectable errors because two
+captures produced different bits.  There may have been other
+uncorrectable errors that were concealed the same way on the two
+captures, but my test would not have detected that.
+<p>
+2) Many (most?) uncorrectable errors are invisible.  So the claim made
+in one Usenet thread I read that "I did not see glitches, so the copy is
+bit-perfect" is not a good claim.  In other words, "concealed" errors
+could very well go unnoticed but still cause bit differences/loss over
+generations.
+<p>
+3) Since there were a relatively small number of frames with differences
+in literally thousands of frames captured, the error rate is not large
+at all.  Also, the errors seemed to come in batches of almost
+consecutive frames, so there could have been weak spots on the tape.
+Still, the captures are <i>clearly</i> not bit-perfect by any means!
+<p>
+Now maybe I have a bad camera (actually two: my old one that got bad at
+some point, and a new one that is bad out of the box), but I am assuming
+for now that this is the nature of MiniDV.  On the new recordings, I
+never *noticed* any dropouts at all, but the bit comparrison showed a
+few mismatches here and there.  Most of the tape was probably copied
+bit-perfectly, but obviously not all of it.  In fact, there were enough
+differences to make me call this "generational loss".  It might go many
+generations before the loss becomes obvious, but it's still there.
+<p>
+If you have any questions or comments, you can email me here:
+<br>
+<img src="joe_email.gif">
+
+<p><hr><p>
+
+<h2>Results from the captures</h2>
+The clips examined were the new recordings using
+the new camcorder.  The full tape capture was done twice, using FireWire
+and WinDV software to Type 1 AVIs.  The option to start a new AVI when
+a gap of 1 second or more in timecode was used, and this is what enabled
+me to get the exact same frames on each capture.
+<p>
+<table border>
+<tr><th>Clip</th><th>Total frames</th><th>Differing frames</th><th>Audio difference</th></tr>
+<tr><td>1</td><td>4822</td><td>1, 336</td><td>None</td></tr>
+<tr><td>2</td><td>6030</td><td>1, 407, 408, 5369</td><td>None</td></tr>
+<tr><td>3</td><td>392</td><td>None</td><td>None</td></tr>
+<tr><td>4</td><td>4626</td><td>None</td><td>None</td></tr>
+<tr><td>5</td><td>321</td><td>None</td><td>None</td></tr>
+<tr><td>6</td><td>3170</td><td>None</td><td>None</td></tr>
+<tr><td>7</td><td>3528</td><td>None</td><td>None</td></tr>
+<tr><td>8</td><td>4214</td><td>1</td><td>None</td></tr>
+<tr><td>9</td><td>4570</td><td>2486, 2487, 2495, 2502, 2503</td><td>Small silent gaps in 2nd capture</td></tr>
+</table>
+
+<p><hr><p>
+
+<h2>Frames with differences</h2>
+Below are frames from the clips that showed differences.  The
+first two images in each row are from the two captures, and the third image
+was created with the Linux/ImageMagick "compare" command.  The red areas
+are where pixel differences are located.  These images were scaled to
+320x240, but the original 720x480 frames can be viewed by clicking on the
+image.
+<p>
+<b>Big caveat:</b> Please note that I captured the frames to JPEG images.
+What this means is that any pixel differences in the video frames would likely
+affect all pixels in each affected 8x8 square in the images here.  This means
+any artifacting you see around the differences might be augmented by the
+JPEG process.  Just keep this in mind.  Also, the
+difference images would likely show whole 8x8 blocks in red,
+hiding the actual scope of
+the pixel differences within those blocks.  So even though the blocks resemble
+the DCT 8x8 blocks from the MiniDV compression, they should not be interpreted
+this way here.  Still, the areas of red will indicate the area in which the
+pixel errors exist.
+
+<p>
+
+<h3>Clip 1</h3>
+<table border>
+<tr>
+<td><a href="full/11-18.00-0_00000001.jpg"><img src="11-18.00-0_00000001.jpg"></a></td>
+<td><a href="full/11-18.00-1_00000001.jpg"><img src="11-18.00-1_00000001.jpg"></a></td>
+<td><a href="full/11-18.00_00000001_diff.jpg"><img src="11-18.00_00000001_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>This image is the very first frame from the clip.    Note that the differences are not inside this area (i.e. the shifted area is in both captures).  This is probably why it has the shifted area near the top.  My theory is that errors in the first frame of a given clip are due to the camera (and this is an inexpensive camera) doing a worse job laying down the bits just after it comes out of pause.  Also, this one seems to have part of an old image from [perhaps] an area recorded over.</td>
+</tr>
+
+<tr>
+<td><a href="full/11-18.00-0_00000336.jpg"><img src="11-18.00-0_00000336.jpg"></a></td>
+<td><a href="full/11-18.00-1_00000336.jpg"><img src="11-18.00-1_00000336.jpg"></a></td>
+<td><a href="full/11-18.00_00000336_diff.jpg"><img src="11-18.00_00000336_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>This is perhaps my favorite example of subtle differences.  I challenge you to find them!  Using the red areas in the difference image will help.  Hint: look at the pixels in the top center area (the picture on the wall).  Some artifacting can be seen.  I think this is probably a good example of concealing an error.</td>
+</tr>
+
+</table>
+
+<p>
+
+<h3>Clip 2</h3>
+<table border>
+
+<tr>
+<td><a href="full/11-30.00-0_00000001.jpg"><img src="11-30.00-0_00000001.jpg"></a></td>
+<td><a href="full/11-30.00-1_00000001.jpg"><img src="11-30.00-1_00000001.jpg"></a></td>
+<td><a href="full/11-30.00_00000001_diff.jpg"><img src="11-30.00_00000001_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>Frame 1 has similar issues as frame 1 in clip 1.</td>
+</tr>
+
+<tr>
+<td><a href="full/11-30.00-0_00000407.jpg"><img src="11-30.00-0_00000407.jpg"></a></td>
+<td><a href="full/11-30.00-1_00000407.jpg"><img src="11-30.00-1_00000407.jpg"></a></td>
+<td><a href="full/11-30.00_00000407_diff.jpg"><img src="11-30.00_00000407_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>This frame again shows nearly invisible differences.</td>
+</tr>
+
+<tr>
+<td><a href="full/11-30.00-0_00000408.jpg"><img src="11-30.00-0_00000408.jpg"></a></td>
+<td><a href="full/11-30.00-1_00000408.jpg"><img src="11-30.00-1_00000408.jpg"></a></td>
+<td><a href="full/11-30.00_00000408_diff.jpg"><img src="11-30.00_00000408_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>On this one, the difference area is subtle.  Note than in both
+captures, you can see shifting in one of the faces.  However, since this
+shifting is in both captures, this might be an example of errors that happened identically in both transfers.  Or it could be a problem in laying down the track in the camera - hard to know.</td>
+</tr>
+
+<tr>
+<td colspan=3>My log shows that frame 5369 had differences, but for some reason I don't have the images...</td>
+</tr>
+
+</table>
+
+<p>
+
+<h3>Clip 8</h3>
+<table border>
+
+<tr>
+<td><a href="full/12-41.00-0_00000001.jpg"><img src="12-41.00-0_00000001.jpg"></a></td>
+<td><a href="full/12-41.00-1_00000001.jpg"><img src="12-41.00-1_00000001.jpg"></a></td>
+<td><a href="full/12-41.00_00000001_diff.jpg"><img src="12-41.00_00000001_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>This is the first frame in this clip and the only one with differences.  This is similar to the first frame in the above clips, except the top left is a solid color.</td>
+</tr>
+
+</table>
+
+<p>
+
+<h3>Clip 9</h3>
+<table border>
+
+<tr>
+<td><a href="full/12-47.00-0_00002486.jpg"><img src="12-47.00-0_00002486.jpg"></a></td>
+<td><a href="full/12-47.00-1_00002486.jpg"><img src="12-47.00-1_00002486.jpg"></a></td>
+<td><a href="full/12-47.00_00002486_diff.jpg"><img src="12-47.00_00002486_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>This one is interesting, since the difference image shows that an issue with classic "banding."  I have read that this is because "one of the two heads on the scanner clogs or fails."  This is a new camcorder, and the error is clearly temporary over a few frames (you can see it diminish in the next frame).  But notice that the frame differences are very subtle, even though the difference image shows many pixel differences!  Please do note the "big caveat" above,since it could mean that the difference pattens within in the bands are somewhat different than shown here (i.e. the error scope might not be as "solid" in reality).</td>
+</tr>
+
+<tr>
+<td><a href="full/12-47.00-0_00002487.jpg"><img src="12-47.00-0_00002487.jpg"></a></td>
+<td><a href="full/12-47.00-1_00002487.jpg"><img src="12-47.00-1_00002487.jpg"></a></td>
+<td><a href="full/12-47.00_00002487_diff.jpg"><img src="12-47.00_00002487_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td colspan=3>More of the same, but here you can see a problem (shifting) in the hand in the center on the second image.  The images below all show more examples of similar issues.</td>
+</tr>
+
+<tr>
+<td><a href="full/12-47.00-0_00002495.jpg"><img src="12-47.00-0_00002495.jpg"></a></td>
+<td><a href="full/12-47.00-1_00002495.jpg"><img src="12-47.00-1_00002495.jpg"></a></td>
+<td><a href="full/12-47.00_00002495_diff.jpg"><img src="12-47.00_00002495_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td><a href="full/12-47.00-0_00002502.jpg"><img src="12-47.00-0_00002502.jpg"></a></td>
+<td><a href="full/12-47.00-1_00002502.jpg"><img src="12-47.00-1_00002502.jpg"></a></td>
+<td><a href="full/12-47.00_00002502_diff.jpg"><img src="12-47.00_00002502_diff.jpg"></a></td>
+<tr>
+
+<tr>
+<td><a href="full/12-47.00-0_00002503.jpg"><img src="12-47.00-0_00002503.jpg"></a></td>
+<td><a href="full/12-47.00-1_00002503.jpg"><img src="12-47.00-1_00002503.jpg"></a></td>
+<td><a href="full/12-47.00_00002503_diff.jpg"><img src="12-47.00_00002503_diff.jpg"></a></td>
+<tr>
+
+</table>
+
+<table width=100%>
+<tr>
+<td align=right><i><a href="http://www.skyrush.com/">skyrush.com</a></i></td>
+</tr>
+</table>
+
+</body>
