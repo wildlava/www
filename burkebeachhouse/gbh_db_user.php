@@ -1,5 +1,5 @@
 <?php
-$db_name = "wildlava_gbh";
-$db_user = "wildlava_gbh";
+$db_name = "gbh";
+$db_user = "gbh";
 $db_pass = "scubashallow";
 ?>
