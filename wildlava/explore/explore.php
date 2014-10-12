@@ -14,13 +14,13 @@ function explore_log($s)
 
 <HTML>
 <HEAD>
-<TITLE>The "Explore" Adventure Series</TITLE>
+<TITLE>The "Explore" Adventure Games</TITLE>
 </HEAD>
 
 <body bgcolor="#aa8822">
 
 <center>
-<h1>The "Explore" Adventure Series</h1>
+<h1>The "Explore" Adventure Games</h1>
 
 <?php
 
@@ -85,13 +85,15 @@ if (isset($advname))
     $cookie_name = "explore_suspended_game_" . $advname;
     //if (isset($_COOKIE[$cookie_name]))
     //{
-        $last_suspend = $_COOKIE[$cookie_name];
+    //$last_suspend = urldecode($_COOKIE[$cookie_name]);
+    $last_suspend = $_COOKIE[$cookie_name];
+    //print $last_suspend;
     //}
     
     $suspend_param = "";
     if (isset($last_suspend))
     {
-        $suspend_param = " -s " . escapeshellarg($last_suspend);
+        $suspend_param = " -s " . escapeshellarg(stripslashes($last_suspend));
     }
 
     if (isset($command))
@@ -102,8 +104,9 @@ if (isset($advname))
             $esc_command = "''";
         }
         
-        //$fp = popen("ruby /home/html/explore_files/explore.rb -c " . $esc_command . " -f /home/html/explore_files/$advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
-        $fp = popen("/home/html/explore_files/explore -c " . $esc_command . " -f /home/html/explore_files/$advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
+        //$fp = popen("ruby explore.rb -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
+        //print htmlspecialchars("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param);
+        $fp = popen("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
 
         $output_buffer[] = $last_prompt . $command;
 
@@ -114,8 +117,8 @@ if (isset($advname))
         // Clear screen
         unset($screen_buffer);
 
-        //$fp = popen("ruby /home/html/explore_files/explore.rb --one-shot -f /home/html/explore_files/$advname.exp" . $suspend_param, "r");
-        $fp = popen("/home/html/explore_files/explore -f /home/html/explore_files/$advname.exp" . $suspend_param, "r");
+        //$fp = popen("ruby explore.rb --one-shot -f $advname.exp" . $suspend_param, "r");
+        $fp = popen("python explore.py --one-shot -f $advname.exp" . $suspend_param, "r");
 
         explore_log("Starting game: " . $advname);
     }
@@ -187,7 +190,7 @@ else
 {
     unset($screen_buffer);
     
-    $output_buffer[] = "No adventure selected.";
+    $output_buffer[] = "Please select an adventure.";
     $output_buffer[] = " ";
     $output_buffer[] = " ";
     $output_buffer[] = " ";
@@ -244,22 +247,28 @@ print "</font></pre></td></tr><tr><td colspan=2 bgcolor=\"#00aacc\">\n";
 
 if (!isset($advname))
 {
-    print "Please select a game from the list below...\n";
+    print "Please select an adventure\n";
 }
 else if ($won)
 {
-    print "Congratulations!  You solved the adventure!\n";
+    print "Congratulations, you have successfully completed this adventure!\n";
     explore_log("Won game: " . $advname);
+    unset($advname);
+    unset($_SESSION['advname']);
 }
 else if ($dead)
 {
     print "Game over.\n";
     explore_log("Died in game: " . $advname);
+    unset($advname);
+    unset($_SESSION['advname']);
 }
 else if ($end)
 {
-    print "Game over.\n";
+    //print "Game over.\n";
     explore_log("Quit game: " . $advname);
+    unset($advname);
+    unset($_SESSION['advname']);
 }
 else
 {
@@ -312,7 +321,13 @@ if (!isset($advname))
 {
 ?>
 
-<hr>
+<p>
+
+<img align=left src="explore_launch_icon.png">
+<h3>Now available as an <a href="http://www.android.com/">Android</a> phone app!  If you have an Android phone, look in Android Market for "Explore".</h3>
+<br clear=left>
+        
+<p>
 
 When I was 15 or so, my cousin, De, and I were into playing adventure games,
 like the mother of all text adventure games,
@@ -334,6 +349,8 @@ We came up with three adventures that were written
 in the wee hours of the morning on three separate occasions listening
 to Steely Dan.  It was kind of a mystical inspiration I would say.
 <p>
+De is no longer with us, but these games live on for me as a great memory of our friendship, and I hope that they allow a little piece of him to endure.
+<p>
 Years later I dug up the old BASIC program and rewrote it in
 C (note that the C version and the
 BASIC version are no longer being maintained, so future adventure game files
@@ -341,9 +358,14 @@ or newer revisions of the old ones won't work with the old code).
 <p>
 A few years after this I rewrote the whole system in Java
 as a way to learn the language.  And years after that, I rewrote the
-whole thing in Python.  Now, as a way to explore the new languange called
+whole thing in Python and later in Ruby.  The Python version is used here.
+
+<!--
+Now, as a way to explore the new languange called
 "Ruby", I translated the Python code to Ruby.  Both Python and Ruby versions
 are now maintained, and either may be used here.
+-->
+
 Now you too can play these historic games on-line!
 <p>
 When starting a
@@ -403,7 +425,7 @@ Other text adventure related links:
 <p>
 <table width=100%>
 <tr>
-<td align=right><i><a href="http://www.skyrush.com/">skyrush.com</a></i></td>
+<td align=right><i><a href="http://www.wildlava.com/">wildlava.com</a></i></td>
 </tr>
 </table>
 
