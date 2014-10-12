@@ -8,9 +8,9 @@ Your IP address:
 </h3>
 
 <h1>
-<font face="courier">
+<pre>
 <?php echo $_SERVER['REMOTE_ADDR'];?>
-</font>
+</pre>
 </h1>
 
 </center>
