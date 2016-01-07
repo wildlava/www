@@ -42,7 +42,7 @@ $res_end_times = array();
 $res_comments = array();
 $res_emails = array();
 
-$year = 2015;
+$year = 2016;
 
 $result = mysql_db_query($db_name, "SELECT * FROM Reservations WHERE EXTRACT(YEAR from start)=$year ORDER BY start");
 while ($data = mysql_fetch_array($result, MYSQL_ASSOC))
