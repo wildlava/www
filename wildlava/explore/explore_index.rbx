@@ -326,7 +326,7 @@ body << ''
 body << '<p>'
 body << '<table width=100%>'
 body << '<tr>'
-body << '<td align=right><i><a href="http://www.skyrush.com/">skyrush.com</a></i></td>'
+body << '<td align=right><i><a href="http://www.wildlava.com/">www.wildlava.com</a></i></td>'
 body << '</tr>'
 body << '</table>'
 

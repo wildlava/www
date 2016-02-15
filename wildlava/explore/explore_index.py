@@ -310,7 +310,7 @@ def handler(req):
     body.append('<p>')
     body.append('<table width=100%>')
     body.append('<tr>')
-    body.append('<td align=right><i><a href="http://www.skyrush.com/">skyrush.com</a></i></td>')
+    body.append('<td align=right><i><a href="http://www.wildlava.com/">www.wildlava.com</a></i></td>')
     body.append('</tr>')
     body.append('</table>')
 
