@@ -17,7 +17,7 @@ function explore_log($s)
 <TITLE>The "Explore" Adventure Games</TITLE>
 </HEAD>
 
-<body bgcolor="#aa8822">
+<body bgcolor="#666666" text="#ffffff" link="#33ccff" vlink="#aa55ff" alink="#ff0055">
 
 <center>
 <h1>The "Explore" Adventure Games</h1>
@@ -243,7 +243,7 @@ for ($i=0; $i<$SCREEN_LINES; ++$i)
     //print "<br>\n";
 }
 
-print "</font></pre></td></tr><tr><td colspan=2 bgcolor=\"#00aacc\">\n";
+print "</font></pre></td></tr><tr><td colspan=2 bgcolor=\"#424242\">\n";
 
 if (!isset($advname))
 {
@@ -285,7 +285,7 @@ else
     print "</script>\n";
 }
 
-print "</td></tr><tr><td bgcolor=\"#00aacc\">\n";
+print "</td></tr><tr><td bgcolor=\"#225577\">\n";
 print "To start a new game, click one of the following:<p>\n";
 print "<a href=\"/explore/explore.php?advname=cave\">cave</a><br>\n";
 print "<a href=\"/explore/explore.php?advname=mine\">mine</a><br>\n";
@@ -293,7 +293,7 @@ print "<a href=\"/explore/explore.php?advname=castle\">castle</a><br>\n";
 print "<a href=\"/explore/explore.php?advname=haunt\">haunt</a><br>\n";
 print "<a href=\"/explore/explore.php?advname=porkys\">porkys</a>\n";
 
-print "</td><td bgcolor=\"#00aacc\">\n";
+print "</td><td bgcolor=\"#225577\">\n";
 if ($suspend_param != "")
 {
     print "<b><font color=\"#aa4411\">You have a suspended game.</font></b><br>To resume, type \"resume\".<p>\n";
