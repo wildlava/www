@@ -299,7 +299,7 @@ if ($suspend_param != "")
     print "<b><font color=\"#aa4411\">You have a suspended game.</font></b><br>To resume, type \"resume\".<p>\n";
 }
 print "To save a game, type \"suspend\".<p>\n";
-print "<font size=-1>Typing \"help\" will list some frequently used commands, but remeber that there are many other possible commands to try (things like \"get lamp\" or \"eat taco\").  If you are having trouble, try stating it differently or using fewer words.</font>\n";
+print "<font size=-1>To get started, you may want to type \"help\". This will give some examples of how commands are typically used in the games.</font>\n";
 
 print "</td></tr></table>\n";
 
