@@ -89,7 +89,7 @@ if (isset($advname))
     $last_suspend = $_COOKIE[$cookie_name];
     //print $last_suspend;
     //}
-    
+
     $suspend_param = "";
     if (isset($last_suspend))
     {
@@ -103,7 +103,7 @@ if (isset($advname))
         {
             $esc_command = "''";
         }
-        
+
         //$fp = popen("ruby explore.rb -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
         //print htmlspecialchars("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param);
         $fp = popen("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
@@ -128,7 +128,7 @@ if (isset($advname))
     $won = false;
     $dead = false;
     $end = false;
-    
+
     while ($line = fgets($fp))
     {
         while (substr($line, -1) == "\n")
@@ -176,7 +176,7 @@ if (isset($advname))
             }
         }
     }
-    
+
     pclose($fp);
 
     $_SESSION['state'] = $state;
@@ -189,7 +189,7 @@ if (isset($advname))
 else
 {
     unset($screen_buffer);
-    
+
     $output_buffer[] = "Please select an adventure.";
     $output_buffer[] = " ";
     $output_buffer[] = " ";
@@ -208,7 +208,7 @@ if (!isset($screen_buffer))
         $screen_buffer[] = " ";
     }
 }
-    
+
 // Move lines up on screen
 $start_line = $num_output_lines - ($SCREEN_LINES - $screen_save_lines);
 for ($i=$start_line; $i<$screen_save_lines; ++$i)
@@ -278,7 +278,7 @@ else
     //print "<input type=hidden name=\"state\" value=\"$state\">\n";
     print "<input type=submit name=\"enter\" value=\"Enter\">\n";
     print "</form>\n";
-    
+
     // Put focus in command field
     print "<script type=\"text/javascript\">\n";
     print "document.command_form.command_field.focus();\n";
@@ -326,7 +326,7 @@ if (!isset($advname))
 <img align=left src="explore_launch_icon.png">
 <h3>Now available as an <a href="http://www.android.com/">Android</a> phone app!  If you have an Android phone, look in Android Market for "Explore".</h3>
 <br clear=left>
-        
+
 <p>
 
 When I was 15 or so, my cousin, De, and I were into playing adventure games,
