@@ -1,6 +1,6 @@
 <?php
 
-/* Comment this section out temporarily to allow initialization
+/* Uncomment this section temporarily to allow initialization
 
 $conn = mysql_connect("localhost", "gbh", "saltisland");
 
