@@ -394,7 +394,7 @@ somehow as Enchanted Cave.  De and I didn't make any more games after this one.
 
 <li><b>Haunt</b> - "Haunted House" was not an original creation.  It is a clone
 of Radio Shack's
-<a href="http://www.simology.com/smccoy/trs80/model134/mhauntedhouse.html">
+<a href="http://www.figmentfly.com/hauntedhouse/hauntedhouse.html">
 Haunted House</a> adventure game that I re-created in the Explore Adventure
 Language as a test of the language's power.  I had to play the original quite
 a bit to get it right, since I was going on the behavior of the game and not
