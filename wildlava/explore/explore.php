@@ -93,7 +93,7 @@ if (isset($advname))
     $suspend_param = "";
     if (isset($last_suspend))
     {
-        $suspend_param = " -s " . escapeshellarg(stripslashes($last_suspend));
+        $suspend_param = " -s " . escapeshellarg($last_suspend);
     }
 
     if (isset($command))
