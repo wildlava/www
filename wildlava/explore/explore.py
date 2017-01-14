@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 #
 # Explore
 #    - The Adventure Interpreter
@@ -13,9 +11,11 @@ import time
 import string
 import zlib
 import base64
+import re
 
 trs_compat = False
 use_fixed_objects = False
+max_line_length = 79;
 
 def a_or_an(s):
     s_lower = s.lower()
@@ -32,26 +32,31 @@ class ExpIO:
         self.store_output = False
         self.no_delay = False
 
-    def tell(self, s, backslash_to_newline=True):
-        if backslash_to_newline:
-            s = s.replace('\\', '\n')
+    def tell(self, s):
+        s = s.replace('\\', '\n')
 
-        lines = s.split('\n')
+        out_lines = []
+        for line in s.split('\n'):
+            while len(line) > max_line_length:
+                last_space_pos = line.rfind(' ', 0, max_line_length + 1);
+                if last_space_pos == -1:
+                    break
+                else:
+                    out_lines.append(line[:last_space_pos])
+                    line = line[last_space_pos + 1:]
 
+            out_lines.append(line)
+
+        for out_line in out_lines:
+            self.tell_raw(out_line)
+
+    def tell_raw(self, s):
         if self.store_output:
-            self.output.extend(lines)
+            self.output.append(s)
         else:
-            for i in range(len(lines)):
-                if not self.no_delay:
-                    time.sleep(.03)
-                print lines[i]
-
-                #if i < (len(lines) - 1):
-                #    sys.stdout.write(lines[i] + '\n')
-                #else:
-                #    sys.stdout.write(lines[i])
-
-                #sys.stdout.flush()
+            if not self.no_delay:
+                time.sleep(.03)
+            print s
 
     #def clear_output(self):
     #    if len(self.output) > 0:
@@ -689,12 +694,12 @@ class World:
         argument = None
         verbatim_argument = ""
 
-        # Save the argument before case conversion in case someone needs it.
+        # Save the argument before processing in case someone needs it.
         pos = wish.find(" ")
         if pos != -1:
             verbatim_argument = wish[pos + 1:]
 
-        wish = wish.upper()
+        wish = re.sub('[^A-Z ]', '', wish.upper())
 
         custom = self.find_custom(wish, self.player.current_room)
 
@@ -755,7 +760,7 @@ class World:
 
             elif command == "HELP":
                 self.exp_io.tell("")
-                self.exp_io.tell("Welcome! In this game you will use commands to move around,\\manipulate objects or your environment, and do various things.\\To move, type a cardinal direction or up or down (first letter\\is fine: \"n\" for north, \"d\" for down, etc.). To see where you\\are again, type \"look\". When you find objects, you can pick\\them up (\"get bottle\"), drop them (\"drop gold\"), or do other\\things (\"eat food\", \"wave wand\", etc.). To see what you are\\carrying, type \"inventory\" (\"invent\" for short). To save your\\game for later, type \"suspend\". To resume it later, type\\\"resume\". To end the game, type \"quit\". The key is to use\\your imagination and just try things (\"fly\", \"open door\",\\\"push button\", etc.). Have fun, and good luck!")
+                self.exp_io.tell("Welcome! The object of this game is simple: You just need to escape alive! You will use short commands (usually just one or two words) to do various things like move around, manipulate objects, and interact with your environment. To move, simply type a direction (using the first letter is fine: \"n\" for north, \"d\" for down, etc.). To be reminded of where you are, type \"look\". When you find objects, you can pick them up (\"get bottle\"), drop them (\"drop gold\"), or do other things (\"eat food\", \"wave wand\", etc.). To see what you are carrying, type \"inventory\" (\"invent\" for short). To save your game for later (or in case you think you are about about to do something perilous), type \"suspend\". To resume later, type \"resume\". To end the game, type \"quit\". The key is to use your imagination and just try things (like \"fly\", \"open door\", \"push button\", etc.). If what you are attempting to do does not work, try saying it another way. Have fun, and good luck!")
                 self.exp_io.tell("")
 
             elif ((command == "QUIT" or command == "STOP") and
@@ -769,13 +774,17 @@ class World:
                 if argument != None:
                     self.player.get_item(argument, acknowledge)
                 else:
-                    self.exp_io.tell("Get what?")
+                    self.exp_io.tell(command[0] +
+                                     command[1:].lower() +
+                                     " what?")
 
             elif command == "DROP" or command == "THROW":
                 if argument != None:
                     self.player.drop_item(argument, acknowledge)
                 else:
-                    self.exp_io.tell("Drop what?")
+                    self.exp_io.tell(command[0] +
+                                     command[1:].lower() +
+                                     " what?")
 
             elif ((command == "INVENT" or command == "INVENTORY") and
                   argument == None):
@@ -786,10 +795,9 @@ class World:
                 #self.exp_io.tell("Sorry, suspend has not yet been implemented.")
                 if self.suspend_mode == SUSPEND_INTERACTIVE:
                     self.exp_io.tell("")
-                    self.exp_io.tell("OK, grab the following long line and save it away somewhere.")
-                    self.exp_io.tell("This will be the command you use to resume your game:")
+                    self.exp_io.tell("OK, grab the following long line and save it somewhere. This will be the command you use later to resume your game:")
                     self.exp_io.tell("")
-                    self.exp_io.tell("resume " + self.get_state(), False)
+                    self.exp_io.tell_raw("resume " + self.get_state())
                     self.exp_io.tell("")
                 else:
                     if acknowledge:
@@ -811,8 +819,7 @@ class World:
                   self.suspend_mode == SUSPEND_INTERACTIVE):
                 #self.exp_io.tell("Sorry, resume has not yet been implemented.")
                 if argument == None:
-                    self.exp_io.tell("Please follow this command with the code you were given")
-                    self.exp_io.tell("when you suspended your game.")
+                    self.exp_io.tell("Please follow this command with the code you were given when you suspended your game.")
                 else:
                     if not self.set_state(verbatim_argument):
                         self.exp_io.tell("Hmm, that resume code just doesn't seem to make sense! Sorry.")
@@ -878,10 +885,7 @@ class World:
 
         # and the command numbers having actions that have been "done"
         command_buf = []
-        if self.suspend_version == 0:
-            commands = self.commands
-        else:
-            commands = reversed(self.commands)
+        commands = reversed(self.commands)
 
         for command in commands:
             if len(command.actions) > 0 and len(command.actions[0]) > 0 and command.actions[0][0] == "^":
@@ -892,10 +896,7 @@ class World:
         buf.append(string.join(command_buf, ''))
 
         # now the room details that have changed
-        if self.suspend_version == 0:
-            room_list = sorted(self.room_list)
-        else:
-            room_list = reversed(self.room_list)
+        room_list = reversed(self.room_list)
 
         for room_name in room_list:
             room = self.rooms[room_name]
@@ -911,18 +912,15 @@ class World:
             # the items in the room
             room_data_buf.append(string.join(room.items, ','))
 
-            if self.suspend_version == 0:
-                buf.append(string.join(room_data_buf, ':'))
-            else:
-                # Compress things a little
-                room_data_string = string.join(room_data_buf, ':')
+            # Compress things a little
+            room_data_string = string.join(room_data_buf, ':')
 
-                if room_data_string[0:8] == '.:::::::':
-                    room_data_string = room_data_string[8:]
-                elif room_data_string[1:8] == ':::::::':
-                    room_data_string = room_data_string[0:2] + room_data_string[8:]
+            if room_data_string[0:8] == '.:::::::':
+                room_data_string = room_data_string[8:]
+            elif room_data_string[1:8] == ':::::::':
+                room_data_string = room_data_string[0:2] + room_data_string[8:]
 
-                buf.append(room_data_string)
+            buf.append(room_data_string)
 
         buf_string = string.join(buf, ';')
         checksum = 0
@@ -930,10 +928,7 @@ class World:
             checksum += ord(buf_string[i])
 
         #print "Raw string: " + chr(((checksum >> 6) & 0x3f) + 0x21) + chr((checksum & 0x3f) + 0x21) + buf_string
-        if self.suspend_version == 0:
-            return base64.b64encode(zlib.compress(chr(((checksum >> 6) & 0x3f) + 0x21) + chr((checksum & 0x3f) + 0x21) + buf_string))
-        else:
-            return str(self.suspend_version) + ":" + str(self.version) + ":" + self.encrypt(chr(((checksum >> 6) & 0x3f) + 0x21) + chr((checksum & 0x3f) + 0x21) + buf_string)
+        return str(self.suspend_version) + ":" + str(self.version) + ":" + self.encrypt(chr(((checksum >> 6) & 0x3f) + 0x21) + chr((checksum & 0x3f) + 0x21) + buf_string)
 
     def set_state(self, s):
         if not s:
@@ -941,13 +936,7 @@ class World:
 
         colon_pos = s.find(':')
         if colon_pos == -1 or s[0] < '0' or s[0] > '9':
-            saved_suspend_version = 0
-            saved_adventure_version = -1
-
-            try:
-                state_str = zlib.decompress(base64.b64decode(s))
-            except:
-                return False
+            return False
         else:
             try:
                 state_parts = s.split(':', 2)
@@ -1029,18 +1018,10 @@ class World:
         #    self.player.items = new_player_items
 
         # Recover the state of the actions.
-        if  saved_suspend_version == 0:
-            commands = self.commands
-            command_idx = 0
-        else:
-            commands = reversed(self.commands)
-            command_idx = -num_commands_delta
+        commands = reversed(self.commands)
+        command_idx = -num_commands_delta
 
         for command in commands:
-            # Only needed for the saved_suspend_version == 0 case
-            if command_idx >= num_saved_commands:
-                break
-
             if command_idx >= 0 and len(command.actions) > 0:
                 if parts[2][command_idx] == '^' and (len(command.actions[0]) == 0 or command.actions[0][0] != '^'):
                     command.actions[0] = "^" + command.actions[0]
@@ -1051,10 +1032,7 @@ class World:
 
         # Recover the room details.
         room_idx = 0
-        if saved_suspend_version == 0:
-            room_list = sorted(self.room_list)
-        else:
-            room_list = reversed(self.room_list)
+        room_list = reversed(self.room_list)
 
         for room_name in room_list:
             room = self.rooms[room_name]
@@ -1139,7 +1117,7 @@ def play(filename=None, no_delay=False):
 
     exp_io.tell("")
     exp_io.tell("")
-    exp_io.tell("*** EXPLORE ***  ver 4.8.6")
+    exp_io.tell("*** EXPLORE ***  ver 4.9")
 
     if filename == None:
         exp_io.tell("")
@@ -1226,7 +1204,7 @@ def play_once(filename, command=None, resume=None, last_suspend=None, return_out
     if not quiet:
         exp_io.tell("")
         exp_io.tell("")
-        exp_io.tell("*** EXPLORE ***  ver 4.8.6")
+        exp_io.tell("*** EXPLORE ***  ver 4.9")
 
     advname = os.path.basename(filename)
     if advname.find(".") != -1:
