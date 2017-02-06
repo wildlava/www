@@ -324,7 +324,7 @@ if (!isset($advname))
 <p>
 
 <img align=left src="explore_launch_icon.png">
-<h3>Now available as an <a href="http://www.android.com/">Android</a> phone app!  If you have an Android phone, look in Android Market for "Explore".</h3>
+<h3>Now available as an <a href="https://play.google.com/store/apps/details?id=com.wildlava.explore">Android</a> phone app!  If you have an Android phone, look in Android Market for "Explore".</h3>
 <br clear=left>
 
 <p>
