@@ -106,7 +106,7 @@ if (isset($advname))
 
         //$fp = popen("ruby explore.rb -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
         //print htmlspecialchars("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param);
-        $fp = popen("python explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
+        $fp = popen("/usr/local/bin/python3 explore.py --one-shot -c " . $esc_command . " -f $advname.exp -r " . escapeshellarg($state) . $suspend_param, "r");
 
         $output_buffer[] = $last_prompt . $command;
 
@@ -118,7 +118,7 @@ if (isset($advname))
         unset($screen_buffer);
 
         //$fp = popen("ruby explore.rb --one-shot -f $advname.exp" . $suspend_param, "r");
-        $fp = popen("python explore.py --one-shot -f $advname.exp" . $suspend_param, "r");
+        $fp = popen("/usr/local/bin/python3 explore.py --one-shot -f $advname.exp" . $suspend_param, "r");
 
         explore_log("Starting game: " . $advname);
     }
