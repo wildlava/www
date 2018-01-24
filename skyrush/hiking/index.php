@@ -58,11 +58,5 @@ if ($links != FALSE)
 
 ?>
 
-<table width=100%>
-<tr>
-<td align=right><i><a href="http://www.skyrush.com/">skyrush.com</a></i></td>
-</tr>
-</table>
-
 </body>
 </html>
