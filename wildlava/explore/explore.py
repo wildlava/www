@@ -14,7 +14,6 @@ import re
 
 trs_compat = False
 use_fixed_objects = False
-max_line_length = 79;
 
 def a_or_an(s):
     s_lower = s.lower()
@@ -29,6 +28,7 @@ class ExpIO:
     def __init__(self):
         self.output = []
         self.store_output = False
+        self.max_line_length = 79
         self.no_delay = False
 
     def tell(self, s):
@@ -36,8 +36,8 @@ class ExpIO:
 
         out_lines = []
         for line in s.split('\n'):
-            while len(line) > max_line_length:
-                last_space_pos = line.rfind(' ', 0, max_line_length + 1);
+            while len(line) > self.max_line_length:
+                last_space_pos = line.rfind(' ', 0, self.max_line_length + 1)
                 if last_space_pos == -1:
                     break
                 else:
@@ -67,6 +67,27 @@ class ExpIO:
         else:
             return None
 
+    def save_suspended_state(self, filename, state):
+        try:
+            fp = open(filename, 'w')
+            fp.write(state)
+            fp.write('\n')
+            fp.close()
+        except IOError:
+            return False
+
+        return True
+
+    def load_suspended_state(self, filename):
+        try:
+            fp = open(filename, 'r')
+            state = fp.read().strip()
+            fp.close()
+        except IOError:
+            return None
+
+        return state
+
 
 class Command:
     #location = None
@@ -75,18 +96,21 @@ class Command:
     #actions = []
 
     def __init__(self):
-        self.location = None
         self.commands = None
         self.condition = None
-        self.action = None
+        self.location = None
+        self.actions = None
+        self.denied_directive = None
+        self.fall_back_to_builtin = True
         self.cont = False
+        self.one_shot = False
+        self.disabled = False
 
 
 class ItemContainer:
     def __init__(self, world):
         self.world = world
 
-        self.fixed_objects = []
         self.items = []
         self.item_limit = None
 
@@ -142,6 +166,7 @@ class Room(ItemContainer):
         self.desc = None
         self.desc_alt = None
         self.desc_ctrl = None
+        self.fixed_objects = []
         self.neighbors = [None, None, None, None, None, None]
         self.original_neighbors = [None, None, None, None, None, None]
 
@@ -207,7 +232,7 @@ class Room(ItemContainer):
             if pos == -1:
                 ctrl = self.desc_ctrl
             else:
-                if self.desc_ctrl[-1] == "+":
+                if self.desc_ctrl.endswith('+'):
                     ctrl = self.desc_ctrl[pos + 1:]
                 else:
                     ctrl = self.desc_ctrl[:pos]
@@ -246,7 +271,7 @@ class Player(ItemContainer):
 
         self.current_room = None
 
-    def get_item(self, item, acknowledge):
+    def get_item(self, item, is_root_command):
         full_item_room = self.current_room.expand_item_name(item)
         full_item_self = self.expand_item_name(item)
 
@@ -282,10 +307,10 @@ class Player(ItemContainer):
         else:
             self.current_room.remove_item(full_item_room)
 
-            if acknowledge:
+            if is_root_command:
                 self.exp_io.tell("Ok")
 
-    def drop_item(self, item, acknowledge):
+    def drop_item(self, item, is_root_command):
         full_item = self.expand_item_name(item)
 
         if not self.remove_item(full_item):
@@ -297,7 +322,7 @@ class Player(ItemContainer):
         else:
             self.current_room.add_item(full_item, True)
 
-            if acknowledge:
+            if is_root_command:
                 self.exp_io.tell("Ok")
 
     def list_items(self):
@@ -327,6 +352,7 @@ RESULT_SUSPEND = 64
 
 SUSPEND_TO_MEMORY = 0
 SUSPEND_INTERACTIVE = 1
+SUSPEND_TO_FILE = 2
 
 LONG_DIRECTION_COMMANDS = ["NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN"]
 DIRECTIONS = []
@@ -337,12 +363,15 @@ DIRECTION_COMMANDS = DIRECTIONS + LONG_DIRECTION_COMMANDS
 KEY = b'We were inspired by Steely Dan.'
 
 class World:
-    def __init__(self, exp_io):
+    def __init__(self, exp_io, advname):
         self.exp_io = exp_io
+        self.advname = advname
 
         self.version = 0
         self.title = "This adventure has no title!"
+
         self.player = Player(exp_io, self)
+
         self.rooms = {}
         self.room_list = []
         self.commands = []
@@ -356,10 +385,11 @@ class World:
         self.old_items = {}
         self.old_versions = {}
 
+        self.action_newline_needed = True
         self.action_newline_inserted = False
 
         self.suspend_version = 2
-        self.suspend_mode = SUSPEND_INTERACTIVE
+        self.suspend_mode = SUSPEND_TO_FILE
         self.last_suspend = None
 
     def load(self, filename):
@@ -378,10 +408,10 @@ class World:
 
             if not trs_compat:
                 # Remove double spaces after punctuation
-                line = line.replace('!  ', '! ');
-                line = line.replace('?  ', '? ');
-                line = line.replace('.  ', '. ');
-                line = line.replace(':  ', ': ');
+                line = line.replace('!  ', '! ')
+                line = line.replace('?  ', '? ')
+                line = line.replace('.  ', '. ')
+                line = line.replace(':  ', ': ')
 
             if line.find("=") != -1:
                 keyword, params = line.split("=", 1)
@@ -393,17 +423,17 @@ class World:
                 self.version = int(params)
 
             elif keyword == "TITLE":
-                self.title = params[:]
+                self.title = params
 
             elif keyword == "START_ROOM":
-                start_room = params[:]
+                start_room = params
 
             elif keyword == "INVENTORY_LIMIT":
                 self.player.item_limit = int(params)
 
             elif keyword == "ROOM":
                 new_room = Room(self)
-                new_room.name = params[:]
+                new_room.name = params
                 self.rooms[new_room.name] = new_room
                 self.room_list.append(new_room.name)
                 if first_room == None:
@@ -414,7 +444,7 @@ class World:
                 new_command = None
 
             elif keyword == "LOCAL":
-                cur_room_name = params[:]
+                cur_room_name = params
 
                 new_room = None
                 new_command = None
@@ -429,18 +459,18 @@ class World:
                 new_command = Command()
                 self.commands.append(new_command)
 
-                if (params[0] == "+" or
-                    params[0] == "-" or
-                    params[0] == "$"):
-                    new_command.condition = params[:]
+                if (params.startswith('+') or
+                    params.startswith('-') or
+                    params.startswith('$')):
+                    new_command.condition = params
                 else:
                     pos = params.find(":")
                     if pos != -1:
                         new_command.condition = params[pos + 1:]
 
-                        if not (new_command.condition[0] == "+" or
-                                new_command.condition[0] == "-" or
-                                new_command.condition[0] == "$"):
+                        if not (new_command.condition.startswith('+') or
+                                new_command.condition.startswith('-') or
+                                new_command.condition.startswith('$')):
                             new_command.condition = "+" + new_command.condition
 
                         new_command.commands = params[:pos].split(",")
@@ -452,31 +482,45 @@ class World:
                     new_command.cont = True
 
                 if cur_room_name != None:
-                    new_command.location = cur_room_name[:]
+                    new_command.location = cur_room_name
 
             elif keyword == "ACTION":
                 # If there is no current command, or if there is one,
                 # but it already has an action, make a new command.
-                if new_command == None or new_command.action != None:
+                if new_command == None or new_command.actions != None:
                     new_command = Command()
                     self.commands.append(new_command)
 
                     if cur_room_name != None:
-                        new_command.location = cur_room_name[:]
+                        new_command.location = cur_room_name
 
-                new_command.action = params[:]
+                if params.startswith('.'):
+                    new_command.one_shot = True
+                    action_str = params[1:]
+                else:
+                    action_str = params
+
+                or_pos = action_str.find('|')
+                if or_pos != -1:
+                    new_command.actions = action_str[:or_pos].split(';')
+                    new_command.denied_directive = action_str[or_pos + 1:]
+                    if new_command.denied_directive.startswith('|'):
+                        new_command.fall_back_to_builtin = False
+                        new_command.denied_directive = new_command.denied_directive[1:]
+                else:
+                    new_command.actions = action_str.split(';')
 
             elif keyword == "DESC":
                 if new_room != None:
-                    new_room.desc = params[:]
+                    new_room.desc = params
 
             elif keyword == "ALT_DESC":
                 if new_room != None:
-                   new_room.desc_alt = params[:]
+                   new_room.desc_alt = params
 
             elif keyword == "DESC_CONTROL":
                 if new_room != None:
-                   new_room.desc_ctrl = params[:]
+                   new_room.desc_ctrl = params
 
             elif keyword == "FIXED_OBJECTS":
                 if new_room != None:
@@ -489,27 +533,27 @@ class World:
 
             elif keyword == "NORTH":
                 if new_room != None:
-                   new_room.init_neighbor("N", params[:])
+                   new_room.init_neighbor("N", params)
 
             elif keyword == "SOUTH":
                 if new_room != None:
-                   new_room.init_neighbor("S", params[:])
+                   new_room.init_neighbor("S", params)
 
             elif keyword == "EAST":
                 if new_room != None:
-                   new_room.init_neighbor("E", params[:])
+                   new_room.init_neighbor("E", params)
 
             elif keyword == "WEST":
                 if new_room != None:
-                   new_room.init_neighbor("W", params[:])
+                   new_room.init_neighbor("W", params)
 
             elif keyword == "UP":
                 if new_room != None:
-                   new_room.init_neighbor("U", params[:])
+                   new_room.init_neighbor("U", params)
 
             elif keyword == "DOWN":
                 if new_room != None:
-                   new_room.init_neighbor("D", params[:])
+                   new_room.init_neighbor("D", params)
 
             elif line.startswith("ITEM DESC "):
                 item_name, item_desc = line[10:].split(":")
@@ -534,16 +578,16 @@ class World:
                 self.old_versions[int(old_version)] = old_version_changes
 
         # Sort commands so globals are last
-        tmp_commands = self.commands;
+        tmp_commands = self.commands
         self.commands = []
 
         for c in tmp_commands:
             if c.location != None:
-                self.commands.append(c);
+                self.commands.append(c)
 
         for c in tmp_commands:
             if c.location == None:
-                self.commands.append(c);
+                self.commands.append(c)
 
         # Set up the starting room
         if start_room in self.rooms:
@@ -561,43 +605,36 @@ class World:
         result = RESULT_NORMAL
         error = False
 
-        if command.action == None or command.action[0] == "^":
+        if not command.actions or command.disabled:
             if not auto:
-                self.exp_io.tell("Nothing happens.")
+                if command.denied_directive:
+                    if command.denied_directive.startswith(':'):
+                        self.exp_io.tell(command.denied_directive[1:])
+                    else:
+                        self.exp_io.tell(command.denied_directive)
+                else:
+                    self.exp_io.tell('Nothing happens.')
         else:
             messages = []
 
-            or_pos = command.action.find("|")
-            if or_pos != -1:
-                action_str = command.action[:or_pos]
-            else:
-                action_str = command.action
-
-            if command.action[0] == ".":
-                action_one_shot = True
-                action_list = action_str[1:].split(";")
-            else:
-                action_one_shot = False
-                action_list = action_str.split(";")
-
-            for action in action_list:
+            for action in command.actions:
                 if action.find(":") != -1:
                     action, message = action.split(":", 1)
+                    if message.startswith('^'):
+                        self.action_newline_needed = False
+                        message = message[1:]
                 else:
                     message = None
 
-                if len(action) == 0:
-                    action = None
-
-                if action != None:
-                    if action[0] == "/":
+                if action:
+                    if action.startswith('/'):
                         if action[1:] in self.rooms:
                             room = self.rooms[action[1:]]
 
                             self.player.current_room = room
                             result |= RESULT_DESCRIBE
 
-                    elif action[0] == "!":
+                    elif action.startswith('!'):
                         self.exp_io.tell("")
                         self.exp_io.tell(action[1:])
                         #self.exp_io.tell("")
@@ -605,10 +642,10 @@ class World:
                         result |= RESULT_WIN
                         result |= RESULT_END_GAME
 
-                    elif action[0] == "=":
+                    elif action.startswith('='):
                         result |= self.process_command(action[1:], False)
 
-                    elif action[0] == "%":
+                    elif action.startswith('%'):
                         if action.find(",") != -1:
                             old_item, new_item = action[1:].split(",", 1)
 
@@ -620,26 +657,24 @@ class World:
                                 self.exp_io.tell("You can't do that yet.")
                                 error = True
 
-                    elif action[0] == "+":
-                        if action[1] == "$":
+                    elif action.startswith('+'):
+                        if action.startswith('+$'):
                             if not self.player.add_item(action[2:], False):
                                 self.exp_io.tell("You are carrying too much to do that.")
                                 error = True
                             else:
-                                if command.action[0] != "^":
-                                    command.action = "^" + command.action
+                                command.disabled = True
                         else:
                             self.player.current_room.add_item(action[1:], True)
-                            if command.action[0] != "^":
-                                command.action = "^" + command.action
+                            command.disabled = True
 
-                    elif action[0] == "-":
+                    elif action.startswith('-'):
                         if not self.player.remove_item(action[1:]):
                             if not self.player.current_room.remove_item(action[1:]):
                                 self.exp_io.tell("You can't do that yet.")
                                 error = True
 
-                    elif action[0] == "#":
+                    elif action.startswith('#'):
                         if action.find(">") != -1:
                             room_name, item = action[1:].split(">", 1)
 
@@ -652,25 +687,24 @@ class World:
                                 self.exp_io.tell("You can't do that yet.")
                                 error = True
 
-                    elif action[0] == "[":
-                        if action[1] == "$":
+                    elif action.startswith('['):
+                        if action.startswith('[$'):
                             self.player.current_room.block_way(action[2])
                         else:
                             self.player.current_room.make_way(action[1], action[2:])
 
-                        if command.action[0] != "^":
-                            command.action = "^" + command.action
+                        command.disabled = True
 
-                    elif action[0] == "*":
+                    elif action.startswith('*'):
                         if self.player.current_room.desc_ctrl != None:
-                            if action[1] == "+":
-                                if not (len(self.player.current_room.desc_ctrl) > 0 and self.player.current_room.desc_ctrl[-1] == "+"):
+                            if action.startswith('*+'):
+                                if not self.player.current_room.desc_ctrl.endswith('+'):
                                     self.player.current_room.desc_ctrl += "+"
                             else:
-                                if len(self.player.current_room.desc_ctrl) > 0 and self.player.current_room.desc_ctrl[-1] == "+":
+                                if self.player.current_room.desc_ctrl.endswith('+'):
                                     self.player.current_room.desc_ctrl = self.player.current_room.desc_ctrl[:-1]
 
-                    elif action[0] == "$":
+                    elif action.startswith('$'):
                         equals_pos = action.find("=")
                         if equals_pos != -1:
                             variable_name = action[1:equals_pos]
@@ -689,18 +723,18 @@ class World:
                 if message != None:
                     messages.append(message)
 
-            if action_one_shot:
-                if command.action[0] != "^":
-                    command.action = "^" + command.action
+            if command.one_shot:
+                command.disabled = True
 
             if len(messages) > 0:
-                if ((not self.action_newline_inserted or
-                     trs_compat) and
-                    ((result & RESULT_DESCRIBE) != 0 or
-                     (not trs_compat and auto and
-                      (previous_result & RESULT_DESCRIBE) != 0))):
-                    self.exp_io.tell("")
-                    self.action_newline_inserted = True
+                if self.action_newline_needed:
+                    if ((not self.action_newline_inserted or
+                         trs_compat) and
+                        ((result & RESULT_DESCRIBE) != 0 or
+                         (not trs_compat and auto and
+                          (previous_result & RESULT_DESCRIBE) != 0))):
+                        self.exp_io.tell("")
+                        self.action_newline_inserted = True
                 for message in messages:
                     self.exp_io.tell(message)
 
@@ -777,7 +811,7 @@ class World:
 
         return result
 
-    def process_command(self, wish, acknowledge):
+    def process_command(self, wish, is_root_command):
         result = RESULT_NORMAL
         player_meets_condition = False
         player_in_correct_room = False
@@ -810,10 +844,11 @@ class World:
                         custom = c
 
         try_builtin = True
-        action_denied_directive = None
 
         # Note: this assumes process_command() is called before check_for_auto()
-        self.action_newline_inserted = False;
+        if is_root_command:
+            self.action_newline_needed = True
+            self.action_newline_inserted = False
 
         if trs_compat:
             if custom != None and player_in_correct_room:
@@ -828,22 +863,18 @@ class World:
                     try_builtin = False
                     result = self.take_action(custom)
                 else:
-                    if custom.action != None:
-                        or_pos = custom.action.find("|")
-                        if or_pos != -1:
-                            action_denied_directive = custom.action[or_pos + 1:]
-                            if action_denied_directive.startswith("|"):
-                                try_builtin = False
-                                if action_denied_directive.startswith("|:"):
-                                    self.exp_io.tell(action_denied_directive[2:])
-                                else:
-                                    self.exp_io.tell(action_denied_directive[1:])
+                    if custom.denied_directive and not custom.fall_back_to_builtin:
+                        try_builtin = False
+                        if custom.denied_directive.startswith(':'):
+                            self.exp_io.tell(custom.denied_directive[1:])
+                        else:
+                            self.exp_io.tell(custom.denied_directive)
 
         if try_builtin:
             if wish.find(" ") != -1:
                 command, argument = wish.split(None, 1)
             else:
-                command = wish[:]
+                command = wish
 
             wants_to_walk = False
             goto_room = None
@@ -858,7 +889,7 @@ class World:
 
             elif command == "LOOK":
                 if argument != None:
-                    if not self.action_newline_inserted:
+                    if self.action_newline_needed and not self.action_newline_inserted:
                         self.exp_io.tell("")
                         self.action_newline_inserted = True
                     self.exp_io.tell("There's really nothing more to see.")
@@ -872,45 +903,41 @@ class World:
             elif command == "HELP":
                 self.exp_io.tell("")
                 if trs_compat:
-                    self.exp_io.tell("These are some of the commands you may use:");
-                    self.exp_io.tell("");
-                    self.exp_io.tell("NORTH or N      (go north)");
-                    self.exp_io.tell("SOUTH or S      (go south)");
-                    self.exp_io.tell("EAST or E       (go east)");
-                    self.exp_io.tell("WEST or W       (go west)");
-                    self.exp_io.tell("UP or U         (go up)");
-                    self.exp_io.tell("DOWN or D       (go down)");
-                    self.exp_io.tell("INVENT          (see your inventory - what you are carrying)");
-                    self.exp_io.tell("LOOK            (see where you are)");
-                    self.exp_io.tell("SUSPEND         (save game to finish later)");
-                    self.exp_io.tell("RESUME          (take up where you left off last time)");
-                    self.exp_io.tell("QUIT or STOP    (quit game)");
+                    self.exp_io.tell("These are some of the commands you may use:")
+                    self.exp_io.tell("")
+                    self.exp_io.tell("NORTH or N      (go north)")
+                    self.exp_io.tell("SOUTH or S      (go south)")
+                    self.exp_io.tell("EAST or E       (go east)")
+                    self.exp_io.tell("WEST or W       (go west)")
+                    self.exp_io.tell("UP or U         (go up)")
+                    self.exp_io.tell("DOWN or D       (go down)")
+                    self.exp_io.tell("INVENT          (see your inventory - what you are carrying)")
+                    self.exp_io.tell("LOOK            (see where you are)")
+                    self.exp_io.tell("SUSPEND         (save game to finish later)")
+                    self.exp_io.tell("RESUME          (take up where you left off last time)")
+                    self.exp_io.tell("QUIT or STOP    (quit game)")
                 else:
                     self.exp_io.tell("Welcome! The object of this game is simple: You just need to escape alive! You will use short commands (usually just one or two words) to do various things like move around, manipulate objects, and interact with your environment. To move, simply type a direction (using the first letter is fine: \"n\" for north, \"d\" for down, etc.). To be reminded of where you are, type \"look\". When you find objects, you can pick them up (\"get bottle\"), drop them (\"drop gold\"), or do other things (\"eat food\", \"wave wand\", etc.). To see what you are carrying, type \"inventory\" (\"invent\" for short). To save your game for later (or in case you think you are about about to do something perilous), type \"suspend\". To resume later, type \"resume\". To end the game, type \"quit\". The key is to use your imagination and just try things (like \"fly\", \"open door\", \"push button\", etc.). If what you are attempting to do does not work, try saying it another way. Have fun, and good luck!")
                 self.exp_io.tell("")
 
             elif ((command == "QUIT" or command == "STOP") and
                   argument == None):
-                if acknowledge:
+                if is_root_command:
                     self.exp_io.tell("Ok")
 
                 result |= RESULT_END_GAME
 
             elif command == "GET" or command == "TAKE":
                 if argument != None:
-                    self.player.get_item(argument, acknowledge)
+                    self.player.get_item(argument, is_root_command)
                 else:
-                    self.exp_io.tell(command[0] +
-                                     command[1:].lower() +
-                                     " what?")
+                    self.exp_io.tell(command.capitalize() + " what?")
 
             elif command == "DROP" or command == "THROW":
                 if argument != None:
-                    self.player.drop_item(argument, acknowledge)
+                    self.player.drop_item(argument, is_root_command)
                 else:
-                    self.exp_io.tell(command[0] +
-                                     command[1:].lower() +
-                                     " what?")
+                    self.exp_io.tell(command.capitalize() + " what?")
 
             elif ((command == "INVENT" or command == "INVENTORY") and
                   argument == None):
@@ -925,17 +952,28 @@ class World:
                     self.exp_io.tell("")
                     self.exp_io.tell_raw("resume " + self.get_state())
                     self.exp_io.tell("")
+                elif self.suspend_mode == SUSPEND_TO_FILE:
+                    if not self.exp_io.save_suspended_state(self.advname + ".sus", self.get_state()):
+                        self.exp_io.tell("Hmm, for some reason the game cannot be suspended. Sorry.")
+                    else:
+                        if is_root_command:
+                            self.exp_io.tell("Ok")
                 else:
                     self.last_suspend = self.get_state()
-                    if acknowledge:
+                    if is_root_command:
                         self.exp_io.tell("Ok")
                     result |= RESULT_SUSPEND
 
             elif ((command == "RESUME" or command == "RESTORE") and
                   (self.suspend_mode != SUSPEND_INTERACTIVE and
                    argument == None)):
-                if self.last_suspend != None:
-                    if not self.set_state(self.last_suspend):
+                if self.suspend_mode == SUSPEND_TO_FILE:
+                    new_state = self.exp_io.load_suspended_state(self.advname + ".sus")
+                else:
+                    new_state = self.last_suspend
+
+                if new_state:
+                    if not self.set_state(new_state):
                         self.exp_io.tell("Hmm, the suspended game information doesn't look valid. Sorry.")
                     else:
                         result |= (RESULT_DESCRIBE | RESULT_NO_CHECK)
@@ -960,11 +998,11 @@ class World:
                     if not player_in_correct_room:
                         self.exp_io.tell("You can't do that here.")
                     else:
-                        if action_denied_directive != None:
-                            if action_denied_directive.startswith(":"):
-                                self.exp_io.tell(action_denied_directive[1:])
+                        if custom.denied_directive != None:
+                            if custom.denied_directive.startswith(':'):
+                                self.exp_io.tell(custom.denied_directive[1:])
                             else:
-                                self.exp_io.tell(action_denied_directive)
+                                self.exp_io.tell(custom.denied_directive)
                         else:
                             self.exp_io.tell("You can't do that yet.")
             else:
@@ -1036,13 +1074,13 @@ class World:
         buf.append(','.join(self.player.items))
 
         # and the variables that are set
-        buf.append(','.join([variable + "=" + self.variables[variable] for variable in self.variables]))
+        buf.append(','.join([variable + "=" + self.variables[variable] for variable in sorted(self.variables.keys())]))
 
         # and the state of the actions
         command_buf = []
 
         for command in self.commands:
-            if command.action != None and command.action[0] == "^":
+            if command.actions and command.disabled:
                 command_buf.append("^")
             else:
                 command_buf.append(".")
@@ -1053,7 +1091,7 @@ class World:
         for room_name in self.room_list:
             room = self.rooms[room_name]
 
-            if room.desc_ctrl != None and len(room.desc_ctrl) > 0 and room.desc_ctrl[-1] == "+":
+            if room.desc_ctrl != None and room.desc_ctrl.endswith('+'):
                 room_data_buf = ["+"]
             else:
                 room_data_buf = ["."]
@@ -1080,7 +1118,7 @@ class World:
             checksum += ord(buf_string[i])
 
         buf_string = ("%04x" % (checksum & 0xffff)) + buf_string
-        #print "Raw string: " + str(self.suspend_version) + ":" + str(self.version) + ":" + buf_string
+        #print("Raw string: " + str(self.suspend_version) + ":" + str(self.version) + ":" + buf_string)
         return str(self.suspend_version) + ":" + str(self.version) + ":" + self.encrypt(buf_string)
 
     def set_state(self, s):
@@ -1202,17 +1240,17 @@ class World:
         part_num += 1
 
         # Recover the variables
-        self.variables = {};
+        self.variables = {}
 
         if saved_suspend_version >= 2:
             if parts[part_num] != "":
-                saved_variables = parts[part_num].split(",");
+                saved_variables = parts[part_num].split(",")
                 for variable in saved_variables:
-                    equals_pos = variable.find("=");
+                    equals_pos = variable.find("=")
                     if equals_pos != -1:
                         self.variables[variable[:equals_pos]] = variable[equals_pos + 1:]
 
-            part_num += 1;
+            part_num += 1
 
         # Recover the state of the actions
         num_commands = len(self.commands)
@@ -1239,11 +1277,11 @@ class World:
             if command_idx >= 0 and command_idx < num_saved_commands:
                 command = self.commands[i]
 
-                if command.action != None:
-                    if parts[part_num][command_idx] == '^' and command.action[0] != '^':
-                        command.action = "^" + command.action
-                    elif parts[part_num][command_idx] != '^' and command.action[0] == '^':
-                        command.action = command.action[1:]
+                if command.actions:
+                    if parts[part_num][command_idx] == '^' and not command.disabled:
+                        command.disabled = True
+                    elif parts[part_num][command_idx] != '^' and command.disabled:
+                        command.disabled = False
 
             if saved_suspend_version < 2:
                 command_idx -= 1
@@ -1296,9 +1334,9 @@ class World:
 
             # first the description control
             if room.desc_ctrl != None:
-                if room_code[0] == '+' and (len(room.desc_ctrl) == 0 or room.desc_ctrl[-1] != "+"):
+                if room_code[0] == '+' and not room.desc_ctrl.endswith('+'):
                     room.desc_ctrl += "+"
-                elif room_code[0] != "+" and (len(room.desc_ctrl) > 0 and room.desc_ctrl[-1] == '+'):
+                elif room_code[0] != "+" and room.desc_ctrl.endswith('+'):
                     room.desc_ctrl = room.desc_ctrl[:-1]
 
             # now the possible directions
@@ -1339,8 +1377,6 @@ class World:
 
 def play(filename=None, input_script=None, no_delay=False):
     exp_io = ExpIO()
-    world = World(exp_io)
-
     exp_io.no_delay = no_delay
 
     if input_script != None:
@@ -1370,17 +1406,16 @@ def play(filename=None, input_script=None, no_delay=False):
         if advname.find(".") != -1:
             advname, extension = advname.split(".", 1)
 
+    world = World(exp_io, advname)
+
     exp_io.tell("")
     exp_io.tell(advname + " is now being built...")
 
     try:
         world.load(filename)
     except IOError:
-        try:
-            world.load(os.path.join('/usr/share/explore/adventures', filename))
-        except IOError:
-            print('Adventure not found', file=sys.stderr)
-            sys.exit(1)
+        print('Adventure not found', file=sys.stderr)
+        sys.exit(1)
 
     exp_io.tell("")
     exp_io.tell("")
@@ -1403,7 +1438,7 @@ def play(filename=None, input_script=None, no_delay=False):
             if wish != "":
                 result = world.process_command(wish, True)
             else:
-                result = RESULT_NORMAL
+                result = RESULT_NO_CHECK
         else:
             game_started = True
             result = RESULT_DESCRIBE
@@ -1430,11 +1465,7 @@ def play(filename=None, input_script=None, no_delay=False):
 
 def play_once(filename, command=None, state=None, last_suspend=None, return_output=True, quiet=False, show_title=True, show_title_only=False):
     exp_io = ExpIO()
-    world = World(exp_io)
-
     exp_io.no_delay = True
-    world.suspend_mode = SUSPEND_TO_MEMORY
-    world.last_suspend = last_suspend
     if return_output:
         exp_io.store_output = True
 
@@ -1454,6 +1485,10 @@ def play_once(filename, command=None, state=None, last_suspend=None, return_outp
     advname = os.path.basename(filename)
     if advname.find(".") != -1:
         advname, extension = advname.split(".", 1)
+
+    world = World(exp_io, advname)
+    world.suspend_mode = SUSPEND_TO_MEMORY
+    world.last_suspend = last_suspend
 
     if not quiet:
         exp_io.tell("")
@@ -1481,7 +1516,7 @@ def play_once(filename, command=None, state=None, last_suspend=None, return_outp
         if wish != "":
             result = world.process_command(wish, True)
         else:
-            result = RESULT_NORMAL
+            result = RESULT_NO_CHECK
     else:
         result = RESULT_DESCRIBE
 
@@ -1509,56 +1544,57 @@ def play_once(filename, command=None, state=None, last_suspend=None, return_outp
     return exp_io.get_output()
 
 
-filename = None
-one_shot = False
-command = None
-state = None
-last_suspend = None
-no_delay = False
-input_script = None
+if __name__ == '__main__':
+    filename = None
+    one_shot = False
+    command = None
+    state = None
+    last_suspend = None
+    no_delay = False
+    input_script = None
 
-skip_next = False
-for arg_num in range(1, len(sys.argv)):
-    if skip_next:
-        skip_next = False
-        continue
-    if sys.argv[arg_num] == "-f":
-        if len(sys.argv) > (arg_num + 1) and (len(sys.argv[arg_num + 1]) == 0 or sys.argv[arg_num + 1][0] != '-'):
-            filename = sys.argv[arg_num + 1]
-            skip_next = True
+    skip_next = False
+    for arg_num in range(1, len(sys.argv)):
+        if skip_next:
+            skip_next = False
+            continue
+        if sys.argv[arg_num] == "-f":
+            if len(sys.argv) > (arg_num + 1) and not sys.argv[arg_num + 1].startswith('-'):
+                filename = sys.argv[arg_num + 1]
+                skip_next = True
+            else:
+                print("Error: Missing adventure filename", file=sys.stderr)
+                sys.exit(1)
+        elif sys.argv[arg_num] == "-q":
+            quiet = True
+        elif sys.argv[arg_num] == "-c":
+            if len(sys.argv) > (arg_num + 1) and not sys.argv[arg_num + 1].startswith('-'):
+                command = sys.argv[arg_num + 1]
+                skip_next = True
+        elif sys.argv[arg_num] == "-r":
+            if len(sys.argv) > (arg_num + 1) and not sys.argv[arg_num + 1].startswith('-'):
+                state = sys.argv[arg_num + 1]
+                skip_next = True
+        elif sys.argv[arg_num] == "-s":
+            if len(sys.argv) > (arg_num + 1) and not sys.argv[arg_num + 1].startswith('-'):
+                last_suspend = sys.argv[arg_num + 1]
+                skip_next = True
+        elif sys.argv[arg_num] == "--one-shot":
+            one_shot = True
+        elif sys.argv[arg_num] == "--no-delay":
+            no_delay = True
+        elif sys.argv[arg_num] == "--trs-compat":
+            trs_compat = True
+        elif sys.argv[arg_num].startswith("--script="):
+            input_script = sys.argv[arg_num][9:]
+    #    elif sys.argv[arg_num] == "--no-title":
+    #        show_title = False
+    #    elif sys.argv[arg_num] == "--title-only":
+    #        show_title_only = True
         else:
-            print("Error: Missing adventure filename", file=sys.stderr)
-            sys.exit(1)
-    elif sys.argv[arg_num] == "-q":
-        quiet = True
-    elif sys.argv[arg_num] == "-c":
-        if len(sys.argv) > (arg_num + 1) and (len(sys.argv[arg_num + 1]) == 0 or sys.argv[arg_num + 1][0] != '-'):
-            command = sys.argv[arg_num + 1]
-            skip_next = True
-    elif sys.argv[arg_num] == "-r":
-        if len(sys.argv) > (arg_num + 1) and (len(sys.argv[arg_num + 1]) == 0 or sys.argv[arg_num + 1][0] != '-'):
-            state = sys.argv[arg_num + 1]
-            skip_next = True
-    elif sys.argv[arg_num] == "-s":
-        if len(sys.argv) > (arg_num + 1) and (len(sys.argv[arg_num + 1]) == 0 or sys.argv[arg_num + 1][0] != '-'):
-            last_suspend = sys.argv[arg_num + 1]
-            skip_next = True
-    elif sys.argv[arg_num] == "--one-shot":
-        one_shot = True
-    elif sys.argv[arg_num] == "--no-delay":
-        no_delay = True
-    elif sys.argv[arg_num] == "--trs-compat":
-        trs_compat = True
-    elif sys.argv[arg_num].startswith("--script="):
-        input_script = sys.argv[arg_num][9:]
-#    elif sys.argv[arg_num] == "--no-title":
-#        show_title = False
-#    elif sys.argv[arg_num] == "--title-only":
-#        show_title_only = True
-    else:
-        filename = sys.argv[arg_num] + ".exp"
+            filename = sys.argv[arg_num] + ".exp"
 
-if one_shot or (command != None) or (state != None) or (last_suspend != None):
-    play_once(filename, command, state, last_suspend, False)
-else:
-    play(filename, input_script, no_delay)
+    if one_shot or (command != None) or (state != None) or (last_suspend != None):
+        play_once(filename, command, state, last_suspend, False)
+    else:
+        play(filename, input_script, no_delay)
