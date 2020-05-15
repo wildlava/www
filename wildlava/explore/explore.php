@@ -351,21 +351,11 @@ to Steely Dan.  It was kind of a mystical inspiration I would say.
 <p>
 De is no longer with us, but these games live on for me as a great memory of our friendship, and I hope that they allow a little piece of him to endure.
 <p>
-Years later I dug up the old BASIC program and rewrote it in
-C (note that the C version and the
-BASIC version are no longer being maintained, so future adventure game files
-or newer revisions of the old ones won't work with the old code).
+Years later, I dug up the old BASIC program and rewrote it in C.
+A few years after this, I rewrote the whole system in Java as a way to learn
+the language. And years after that, I rewrote the whole thing in Python and
+later in Ruby. Currently, only the Python version is being maintained.
 <p>
-A few years after this I rewrote the whole system in Java
-as a way to learn the language.  And years after that, I rewrote the
-whole thing in Python and later in Ruby.  The Python version is used here.
-
-<!--
-Now, as a way to explore the new languange called
-"Ruby", I translated the Python code to Ruby.  Both Python and Ruby versions
-are now maintained, and either may be used here.
--->
-
 Now you too can play these historic games on-line!
 <p>
 When starting a

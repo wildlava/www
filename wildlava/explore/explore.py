@@ -170,10 +170,11 @@ class Room(ItemContainer):
         ItemContainer.__init__(self, world)
 
         self.name = None
+        self.desc_ctrl = None
         self.desc = None
         self.desc_alt = None
-        self.desc_ctrl = None
         self.fixed_objects = []
+        self.fixed_objects_alt = []
         self.neighbors = [None, None, None, None, None, None]
         self.original_neighbors = [None, None, None, None, None, None]
 
@@ -230,19 +231,20 @@ class Room(ItemContainer):
         else:
             return neighbor
 
-    def description(self):
-        ctrl = "RC"
-        out_desc = []
-
-        if self.desc_ctrl != None:
-            pos = self.desc_ctrl.find(",")
-            if pos == -1:
-                ctrl = self.desc_ctrl
+    def active_ctrl(self):
+        if self.desc_ctrl == None:
+            return 'RC'
+        else:
+            use_alt = self.desc_ctrl.endswith('+')
+            parts = self.desc_ctrl.rstrip('+').split(',', 1)
+            if len(parts) == 1:
+                return parts[0]
             else:
-                if self.desc_ctrl.endswith('+'):
-                    ctrl = self.desc_ctrl[pos + 1:]
-                else:
-                    ctrl = self.desc_ctrl[:pos]
+                return parts[1 if use_alt else 0]
+
+    def description(self):
+        ctrl = self.active_ctrl()
+        out_desc = []
 
         if ctrl.find("R") != -1 and self.desc != None:
             out_desc.append(self.desc)
@@ -267,7 +269,9 @@ class Room(ItemContainer):
         return '\n'.join(out_desc)
 
     def has_fixed_object(self, item):
-        return item in self.fixed_objects
+        ctrl = self.active_ctrl()
+        return item in ((self.fixed_objects if ctrl.find("R") != -1 else []) +
+                        (self.fixed_objects_alt if ctrl.find("C") != -1 else []))
 
 
 class Player(ItemContainer):
@@ -534,6 +538,11 @@ class World:
                    new_room.fixed_objects = params.split(",")
                    use_fixed_objects = True
 
+            elif keyword == "ALT_FIXED_OBJECTS":
+                if new_room != None:
+                   new_room.fixed_objects_alt = params.split(",")
+                   use_fixed_objects = True
+
             elif keyword == "CONTENTS":
                 if new_room != None:
                    new_room.items = params.split(",")
@@ -563,7 +572,7 @@ class World:
                    new_room.init_neighbor("D", params)
 
             elif line.startswith("ITEM DESC "):
-                item_name, item_desc = line[10:].split(":")
+                item_name, item_desc = line[10:].split(":", 1)
                 self.item_descs[item_name] = item_desc
 
             elif line.startswith("PLURAL ITEM "):
@@ -573,11 +582,11 @@ class World:
                 self.mass_items.append(line[10:])
 
             elif line.startswith("SAME ITEM "):
-                equal_item, existing_item = line[10:].split("=")
+                equal_item, existing_item = line[10:].split("=", 1)
                 self.same_items[equal_item] = existing_item
 
             elif line.startswith("OLD ITEM "):
-                old_item, new_item = line[9:].split("=")
+                old_item, new_item = line[9:].split("=", 1)
                 self.old_items[old_item] = new_item
 
             elif line.startswith("OLD VERSION "):
