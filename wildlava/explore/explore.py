@@ -16,10 +16,12 @@ import re
 trs_compat = False
 use_fixed_objects = False
 
+VOWELS = {'a', 'e', 'i', 'o', 'u'}
+
 def a_or_an(s):
     s_lower = s.lower()
 
-    if s_lower[0] in ['a', 'e', 'i', 'o', 'u']:
+    if s_lower[0] in VOWELS:
         return "an"
     else:
         return "a"
@@ -173,8 +175,8 @@ class Room(ItemContainer):
         self.desc_ctrl = None
         self.desc = None
         self.desc_alt = None
-        self.fixed_objects = []
-        self.fixed_objects_alt = []
+        self.fixed_objects = set()
+        self.fixed_objects_alt = set()
         self.neighbors = [None, None, None, None, None, None]
         self.original_neighbors = [None, None, None, None, None, None]
 
@@ -365,11 +367,9 @@ SUSPEND_TO_MEMORY = 0
 SUSPEND_INTERACTIVE = 1
 SUSPEND_TO_FILE = 2
 
-LONG_DIRECTION_COMMANDS = ["NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN"]
-DIRECTIONS = []
-for dir in LONG_DIRECTION_COMMANDS:
-    DIRECTIONS.append(dir[0])
-DIRECTION_COMMANDS = DIRECTIONS + LONG_DIRECTION_COMMANDS
+LONG_DIRECTIONS = ["NORTH", "SOUTH", "EAST", "WEST", "UP", "DOWN"]
+DIRECTIONS = [d[0] for d in LONG_DIRECTIONS]
+DIRECTION_COMMANDS = set(DIRECTIONS + LONG_DIRECTIONS)
 
 KEY = b'We were inspired by Steely Dan.'
 
@@ -389,8 +389,8 @@ class World:
         self.variables = {}
         self.item_descs = {}
 
-        self.plural_items = []
-        self.mass_items = []
+        self.plural_items = set()
+        self.mass_items = set()
 
         self.same_items = {}
         self.old_items = {}
@@ -535,12 +535,12 @@ class World:
 
             elif keyword == "FIXED_OBJECTS":
                 if new_room != None:
-                   new_room.fixed_objects = params.split(",")
+                   new_room.fixed_objects = set(params.split(","))
                    use_fixed_objects = True
 
             elif keyword == "ALT_FIXED_OBJECTS":
                 if new_room != None:
-                   new_room.fixed_objects_alt = params.split(",")
+                   new_room.fixed_objects_alt = set(params.split(","))
                    use_fixed_objects = True
 
             elif keyword == "CONTENTS":
@@ -576,10 +576,10 @@ class World:
                 self.item_descs[item_name] = item_desc
 
             elif line.startswith("PLURAL ITEM "):
-                self.plural_items.append(line[12:])
+                self.plural_items.add(line[12:])
 
             elif line.startswith("MASS ITEM "):
-                self.mass_items.append(line[10:])
+                self.mass_items.add(line[10:])
 
             elif line.startswith("SAME ITEM "):
                 equal_item, existing_item = line[10:].split("=", 1)
@@ -1096,8 +1096,8 @@ class World:
             else:
                 room_data_buf = ["."]
 
-            for dir in DIRECTIONS:
-                room_data_buf.append(room.neighbor_save_string(dir))
+            for direction in DIRECTIONS:
+                room_data_buf.append(room.neighbor_save_string(direction))
 
             # the items in the room
             room_data_buf.append(','.join(room.items))
@@ -1314,14 +1314,14 @@ class World:
                         if pos != -1:
                             room_code[i] = room_code[i][:pos]
 
-                dir = DIRECTIONS[i - 1]
+                direction = DIRECTIONS[i - 1]
 
                 if room_code[i] == "":
-                    room.revert_neighbor(dir)
+                    room.revert_neighbor(direction)
                 elif room_code[i][0] == "^":
-                    room.block_way(dir)
+                    room.block_way(direction)
                 else:
-                    room.make_way(dir, room_code[i])
+                    room.make_way(direction, room_code[i])
 
             # now the contents
             if room_code[7] == "":
